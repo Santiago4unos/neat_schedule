@@ -2,10 +2,10 @@
   "name": "pretty_schedule",
   "version": "1.0.0",
   "description": "",
-  "main": "js/index.js",
+  "main": "only_local/run.cjs",
   "scripts": {
-    "dev": "nodemon js/index.js",
-    "start": "node js/index.js",
+    "dev": "nodemon only_local/run.cjs",
+    "start": "node only_local/run.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Santi1111",
