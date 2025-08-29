@@ -1,0 +1,17 @@
+{
+  "name": "pretty_schedule",
+  "version": "1.0.0",
+  "description": "",
+  "main": "js/index.js",
+  "scripts": {
+    "dev": "nodemon js/index.js",
+    "start": "node js/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Santi1111",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "pdfreader": "^3.0.7"
+  }
+}
