@@ -1,17 +1,13 @@
 {
-  "name": "pretty_schedule",
-  "version": "1.0.0",
-  "description": "",
-  "main": "only_local/run.cjs",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon only_local/run.cjs",
-    "start": "node only_local/run.cjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "nodemon js/index.js"
   },
-  "author": "Santi1111",
-  "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0",
-    "pdfreader": "^3.0.7"
+    "express": "^4.18.2",
+    "express-fileupload": "^1.4.0",
+    "nodemon": "^3.1.10",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.9.155"
   }
 }

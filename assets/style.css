@@ -5,3 +5,87 @@
     font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
 
+body {
+   background: linear-gradient(135deg, #29d34e 0%, #79D2E6 100%);
+}
+
+h1 {
+    text-align: center;
+}
+
+.upload-area {
+    border: 3px dashed #79D2E6;
+    border-radius: 15px;
+    padding: 40px;
+    margin: 30px 25%;
+    background: #f8f9ff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    color: black;
+    text-align: center;
+}
+
+.upload-area:hover {
+    background: #f0f2ff;
+    border-color: #34bdf3;
+}
+
+.upload-area.dragover {
+    background: #e8ebff;
+    border-color: #283be4;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+#form-div {
+    background-color: rgb(37, 35, 35);
+    margin: 2% 25%;
+    color: white;
+}
+
+#file-info {
+    min-height: 30px;
+    text-align: center;
+}
+
+#schedule-container {
+    min-height: 1100px;
+    background-color: white;
+    margin: 0 10%;
+}
+
+#schedule {
+    display: grid;
+    grid-template-columns: 0.3fr repeat(6, 1fr);
+    justify-content: center;
+    background-color: rgb(175, 175, 175);
+}
+
+.hour-column, .column {
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    /* background-color: white; */
+}
+
+.hour-column span,.column span {
+    background-color: white;
+    margin: 0.5px;
+    padding: 25px;
+    min-height: 70px;
+    max-height: 70px;
+}
+
+.column span {
+    text-align: center;
+}
+
+.vertical-spacer {
+    min-height: 10px;
+}
+
+.horizontal-spacer {
+    min-height: 10px;
+}

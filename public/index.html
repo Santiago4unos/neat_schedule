@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="assets/img/favicon.svg" sizes="any" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/style.css">
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const fileInput = document.getElementById("pdf-file");
+            const fileInfo = document.getElementById("file-info");
+            const classCodeRegex = /[A-Z]{3}-\d{4}[A-Z]/;
+            const hoursRegex = /(?:\d{1,2})?(?:[01]\d|2[0-2]):[0-5]\d:[0-5]\d (?:[01]\d|2[0-2]):[0-5]\d:[0-5]\d/g;
+            const classroomRegex = /[A-F]\d{1,2}/;
+
+            function textToNeatSchedule(data) {
+                const scheduleData = data.text.split("HORARIO")[2];
+                const textList = scheduleData.split("\n");
+                const mappedData = [];
+                console.log(data);
+                let currentSubjectData = {};
+                let previousLine = "";
+                for (const line of textList) {
+                    if (previousLine.match(classCodeRegex)) {
+                        const separatedLine = line.split("-");
+                        if (separatedLine.length > 1) {
+                            currentSubjectData["Subject"] += separatedLine[0].trim();
+                            currentSubjectData["Teacher"] = separatedLine[1].trim();
+                        } else {
+                            currentSubjectData["Teacher"] += line.trim();
+                        }
+                    }
+                    if (line.match(classCodeRegex)) {
+                        const separatedLine = line.split("-");
+                        currentSubjectData["Subject"] = separatedLine[1].trim();
+                        if (separatedLine.length == 3) {
+                            currentSubjectData["Teacher"] = separatedLine[2].trim();
+                        }
+                    }
+                    if (line.match(hoursRegex)) {
+                        if (line.length == 17) {
+                            
+                        } else {
+                            const leadingNumbersAmount = line.length - 17;
+                            line = line.substring(leadingNumbersAmount);
+                        }
+                    }
+                }
+            }
+
+            fileInput.addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (file && file.type === 'application/pdf') {
+                    fileInfo.style.display = 'block';
+                    fileInfo.textContent = `Selected: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+                    const formData = new FormData();
+                    formData.append('pdf', file);
+        
+                    try {
+                        const response = await fetch('/upload', {
+                            method: 'POST',
+                            body: formData
+                        });
+        
+                        if (!response.ok) {
+                            throw new Error('Upload failed');
+                        }
+        
+                        const data = await response.json();
+
+                        textToNeatSchedule(data);
+                        // textToNeatScheduleFile();
+                        // textContent.textContent = data.text;
+                        // result.style.display = 'block';
+                    } catch (err) {
+                        showError('Failed to process PDF. Please try again.');
+                    }
+                } else {
+                    fileInfo.style.display = 'none';
+                    showError('Please select a valid PDF file');
+                }
+            });
+
+            const uploadArea = document.getElementById("uploadArea");
+
+            uploadArea.addEventListener("click", function(e) {
+                fileInput.click();
+            });
+
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+
+            const colorList = ["#a1f7da", "#ffde59", "#ed615c", "#36ad93", "#00bf63", "#38b6ff", "#a1f7da", "#ff66c4", "#8c52ff", "#ff914d"];
+
+
+        });
+    </script>
+    <title>Neat Schedule</title>
+</head>
+<body>
+    <div id="form-div">
+        <h1>Neat Schedule</h1>
+        <div class="upload-area" onclick="document.getElementById('file-info').click()" id="uploadArea">
+            <div>
+                <h3>Sube tu horario aquí</h3>
+            </div>
+        </div>
+            
+        <input type="file" id="pdf-file" accept=".pdf">
+        <div class="file-info" id="file-info"></div>
+    </div>
+    <section id="schedule-container">
+        <div id="schedule">
+            <div class="hour-column">
+                <span>Hora</span>
+                <span>6:00</span>
+                <span>7:00</span>
+                <span>8:00</span>
+                <span>9:00</span>
+                <span>10:00</span>
+                <span>11:00</span>
+                <span>12:00</span>
+                <span>13:00</span>
+                <span>14:00</span>
+                <span>15:00</span>
+                <span>16:00</span>
+                <span>17:00</span>
+                <span>18:00</span>
+                <span>19:00</span>
+                <span>20:00</span>
+                <span>21:00</span>
+                <span>22:00</span>
+            </div>
+            <div class="column">
+                <span>Lunes</span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="column">
+                <span>Martes</span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="column">
+                <span>Miércoles</span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="column">
+                <span>Jueves</span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="column">
+                <span>Viernes</span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="column">
+                <span>Sábado</span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </section>
+</body>
+</html>
