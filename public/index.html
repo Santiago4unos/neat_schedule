@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/img/favicon.svg" sizes="any" type="image/svg+xml">
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
@@ -239,7 +240,10 @@
                 const file = e.target.files[0];
                 if (file && file.type === 'application/pdf') {
                     fileInfo.style.display = 'block';
-                    fileInfo.textContent = `Escogiste: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+                    fileInfo.innerHTML = `
+                        <p>Escogiste: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)</p>
+                        <p>Si estás usando celular, cambia tu pantalla a horizontal para descargar el horario</p>
+                    `;
                     const formData = new FormData();
                     formData.append('pdf', file);
         
@@ -486,6 +490,10 @@
             </div>
         </div>
     </section>
+
+    <footer>
+        Creado por Santiago Muñoz Ruiz 1er semestre B T/M
+    </footer>
 
     <div class="modal" id="subject-modal" style="display: none;">
     <div class="modal-content">

@@ -294,6 +294,12 @@ input[type="file"] {
     border-left-color: #ffc107;
 }
 
+footer {
+    background-color: white;
+    text-align: center;
+    padding: 10px;
+}
+
 @media (max-width: 768px) {
     .modal-content {
         margin: 20px;
