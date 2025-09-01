@@ -222,7 +222,7 @@
                         hourDiv.setAttribute("style", `background-color: ${subjectsData[subject]["color"]};`);
                         hourDiv.setAttribute("class", "clickable");
                         const startHour = Number(scheduledClass.hours.substring(0, 2));
-                        const rowNum = startHour - 6;
+                        const rowNum = startHour - 5;
                         dayColumns[dayNum].children[rowNum].appendChild(hourDiv);
                         const subjectInfo = subjectsData[subject];
                         hourDiv.addEventListener("click", () => showModal(subject, subjectInfo["teacher"], subjectInfo["subjectCode"]));
