@@ -5,54 +5,241 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/img/favicon.svg" sizes="any" type="image/svg+xml">
     <link rel="stylesheet" href="assets/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const fileInput = document.getElementById("pdf-file");
             const fileInfo = document.getElementById("file-info");
             const classCodeRegex = /[A-Z]{3}-\d{4}[A-Z]/;
             const hoursRegex = /(?:\d{1,2})?(?:[01]\d|2[0-2]):[0-5]\d:[0-5]\d (?:[01]\d|2[0-2]):[0-5]\d:[0-5]\d/g;
-            const classroomRegex = /[A-F]\d{1,2}/;
+            const classroomRegex = /[A-F]\d{1,2}/; 
+            const colorList = ["#a1f7da", "#ffde59", "#ed615c", "#36ad93", "#00bf63", "#38b6ff", "#ff4757", "#ff66c4", "#8c52ff", "#ff914d", "#7bed9f"];
+            const modal = document.getElementById("subject-modal");
 
-            function textToNeatSchedule(data) {
-                const scheduleData = data.text.split("HORARIO")[2];
-                const textList = scheduleData.split("\n");
-                const mappedData = [];
-                console.log(data);
-                let currentSubjectData = {};
-                let previousLine = "";
-                for (const line of textList) {
-                    if (previousLine.match(classCodeRegex)) {
-                        const separatedLine = line.split("-");
-                        if (separatedLine.length > 1) {
-                            currentSubjectData["Subject"] += separatedLine[0].trim();
-                            currentSubjectData["Teacher"] = separatedLine[1].trim();
-                        } else {
-                            currentSubjectData["Teacher"] += line.trim();
-                        }
+            function getRandomInt(max) {
+                return Math.floor(Math.random() * max);
+            }
+
+            let jsPDFLoaded = false;
+
+            function loadJsPDF() {
+                return new Promise((resolve, reject) => {
+                    if (jsPDFLoaded) {
+                        resolve();
+                        return;
                     }
-                    if (line.match(classCodeRegex)) {
-                        const separatedLine = line.split("-");
-                        currentSubjectData["Subject"] = separatedLine[1].trim();
-                        if (separatedLine.length == 3) {
-                            currentSubjectData["Teacher"] = separatedLine[2].trim();
+                    
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    script.onload = () => {
+                        jsPDFLoaded = true;
+                        resolve();
+                    };
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            async function downloadScheduleAsPDF() {
+                const scheduleElement = document.getElementById('schedule-container');
+                await loadJsPDF();
+                
+                html2canvas(scheduleElement, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('l', 'mm', 'a4');
+                    
+                    const pageWidth = 297;
+                    const pageHeight = 210;
+                    const margin = 10;
+                    const availableWidth = pageWidth - (margin * 2);
+                    const availableHeight = pageHeight - (margin * 2);
+                    
+                    const imgWidth = canvas.width;
+                    const imgHeight = canvas.height;
+                    const ratio = Math.min(availableWidth / (imgWidth * 0.264583), availableHeight / (imgHeight * 0.264583));
+                    
+                    const scaledWidth = imgWidth * 0.264583 * ratio;
+                    const scaledHeight = imgHeight * 0.264583 * ratio;
+                    
+                    const x = (pageWidth - scaledWidth) / 2;
+                    const y = (pageHeight - scaledHeight) / 2;
+                    
+                    pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
+                    pdf.save('horario.pdf');
+                });
+            }
+
+            function downloadScheduleAsImage() {
+                const scheduleElement = document.getElementById('schedule-container');
+                
+                html2canvas(scheduleElement, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff'
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = 'horario.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            }
+
+            function extractDataFromSchedule(data) {
+                const horizontalTolerance = 40;
+                const weekDays = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes"];
+                const scheduleDataList = {"Lunes": {}, "Martes": {}, "Miercoles": {}, "Jueves": {}, "Viernes": {}};
+                const subjectsData = {};
+                const colorsLeft = colorList;
+                let previousLine;
+                let previousColumn;
+                let currentDay = "";
+                let previousDay = "";
+                for (const [key, column] of Object.entries(data)) {
+                    currentDay = "";
+                    for (const line of column) {
+                        const [lineText, xCoords, yCoords, width, regex] = Object.values(line);
+                        if (previousLine) {
+                            if (previousLine.text.match(classCodeRegex)) {
+                                const subject = previousLine.text.split("-")[2].trim();
+                                const separatedLine = lineText.split("-");
+    
+                                if (separatedLine.length > 1) {
+                                    const completeSubjectName = `${subject} ${separatedLine[0].trim()}`;
+                                    subjectsData[completeSubjectName] = subjectsData[subject];
+                                    delete subjectsData[subject];
+    
+                                    subjectsData[completeSubjectName]["subject"] = completeSubjectName;
+                                    subjectsData[completeSubjectName]["teacher"] = separatedLine[1].trim();
+                                } else {
+                                    subjectsData[subject]["teacher"] += ` ${lineText.trim()}`;
+                                    subjectsData[subject]["teacher"] = subjectsData[subject]["teacher"].trim();
+                                }
+                            }
+                            if (previousLine.text.match(hoursRegex) && !lineText.match(hoursRegex) && previousLine.y - 7 <= yCoords && yCoords <= previousLine.y && lineText != "SSOFT") {
+                                let hours = previousLine.text.match(hoursRegex)[0];
+                                if (hours.length != 17) {
+                                    const leadingNumbersAmount = previousLine.text.length - 17;
+                                    hours = previousLine.text.match(previousLine.text.substring(leadingNumbersAmount))[0];
+                                }
+                                const classroom = lineText.split(hoursRegex).filter(part => part !== '')[0];
+                                scheduleDataList[currentDay][hours]["classroom"] += classroom;
+                            }
                         }
-                    }
-                    if (line.match(hoursRegex)) {
-                        if (line.length == 17) {
+                        if (lineText.match(classCodeRegex)) {
+                            const separatedLine = lineText.split("-");
+                            let subject = "";
+                            let subjectCodePart1 = "";
+                            let subjectCodePart2 = "";
+                            let teacher = "";
+                            if (separatedLine.length == 3) {
+                                [subjectCodePart1, subjectCodePart2, subject] = separatedLine;
+                            } else {
+                                [subjectCodePart1, subjectCodePart2, subject, teacher] = separatedLine;
+                            }
+                            const rng = getRandomInt(colorsLeft.length);
+                            const color = colorsLeft[rng];
+                            colorsLeft.splice(rng, 1);
+
+                            subjectsData[subject.trim()] = {
+                                "subject": subject.trim(),
+                                "teacher": teacher.trim(),
+                                "subjectCode": `${subjectCodePart1}-${subjectCodePart2.trim()}`,
+                                "color": color,
+                                "yRange": [yCoords - 7, yCoords + 7]
+                            };
+                        }
+                        // For classes that don't have a class code (Why don't they just have one, man)
+                        else if (previousColumn == null && lineText.split("-").length == 2 && !previousLine.text.match(classCodeRegex)) {
+                            const separatedLine = lineText.split("-");
+                            const rng = getRandomInt(colorsLeft.length);
+                            const color = colorsLeft[rng];
+                            colorsLeft.splice(rng, 1);
+                            [subject, teacher] = separatedLine;
+                            subjectsData[subject.trim()] = {
+                                "subject": subject.trim(),
+                                "teacher": teacher.trim(),
+                                "color": color,
+                                "yRange": [yCoords - 7, yCoords + 7]
+                            };
+                        }
+                        else if (weekDays.includes(`${lineText[0].toUpperCase()}${lineText.substring(1)}`)) {
+                            currentDay = `${lineText[0].toUpperCase()}${lineText.substring(1)}`;
+                        }
+                        else if (lineText.match(hoursRegex)) {
+                            let hours = lineText.match(hoursRegex)[0];
+                            if (hours.length != 17) {
+                                const leadingNumbersAmount = lineText.length - 17;
+                                hours = lineText.match(lineText.substring(leadingNumbersAmount))[0];
+                            }
                             
-                        } else {
-                            const leadingNumbersAmount = line.length - 17;
-                            line = line.substring(leadingNumbersAmount);
+                            let subject = Object.values(subjectsData).find(subject => 
+                            yCoords >= subject.yRange[0] && yCoords <= subject.yRange[1]
+                            );
+
+                            let classroom = lineText.split(hoursRegex).filter(part => part !== '')[0].trim();
+                            if (classroom == "D-") {
+                                classroom += "SSOFT";
+                            }
+                            
+                            if (currentDay == "") {
+                                previousDayIndex = weekDays.indexOf(previousDay);
+                                currentDay = weekDays[previousDayIndex + 1];
+                            }
+
+                            scheduleDataList[currentDay][hours] = {
+                                "hours": hours,
+                                "subject": subject["subject"],
+                                "classroom": classroom
+                            };
                         }
+                        previousLine = line;
+                    }
+                    previousColumn = column;
+                    if (currentDay) {
+                        previousDay = currentDay;
                     }
                 }
+                return [subjectsData, scheduleDataList];
+            }
+            
+            function dataToVisualSchedule(subjectsData, scheduleDataList) {
+                const scheduleData = Object.values(scheduleDataList);
+                const dayColumns = document.getElementsByClassName("column");
+                for (const [dayNum, classes] of scheduleData.entries()) {
+                    for (const scheduledClass of Object.values(classes)) {
+                        const subject = scheduledClass["subject"];
+                        const hourDiv = document.createElement("div");
+                        hourDiv.innerHTML = `
+                            <p>${scheduledClass["hours"]} ${scheduledClass["classroom"]}</p>
+                            <p>${subject}</p>
+                        `;
+                        hourDiv.setAttribute("style", `background-color: ${subjectsData[subject]["color"]};`);
+                        hourDiv.setAttribute("class", "clickable");
+                        const startHour = Number(scheduledClass.hours.substring(0, 2));
+                        const rowNum = startHour - 6;
+                        dayColumns[dayNum].children[rowNum].appendChild(hourDiv);
+                        const subjectInfo = subjectsData[subject];
+                        hourDiv.addEventListener("click", () => showModal(subject, subjectInfo["teacher"], subjectInfo["subjectCode"]));
+                    }
+                }
+                document.getElementById('download-pdf').style.display = 'block';
+                document.getElementById('download-image').style.display = 'block';
+
+                document.getElementById('download-pdf').onclick = downloadScheduleAsPDF;
+                document.getElementById('download-image').onclick = downloadScheduleAsImage;
             }
 
             fileInput.addEventListener('change', async function(e) {
                 const file = e.target.files[0];
                 if (file && file.type === 'application/pdf') {
                     fileInfo.style.display = 'block';
-                    fileInfo.textContent = `Selected: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+                    fileInfo.textContent = `Escogiste: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
                     const formData = new FormData();
                     formData.append('pdf', file);
         
@@ -68,16 +255,43 @@
         
                         const data = await response.json();
 
-                        textToNeatSchedule(data);
-                        // textToNeatScheduleFile();
-                        // textContent.textContent = data.text;
-                        // result.style.display = 'block';
+                        const [subjectsData, scheduleDataList] = extractDataFromSchedule(data);
+                        dataToVisualSchedule(subjectsData, scheduleDataList);
                     } catch (err) {
-                        showError('Failed to process PDF. Please try again.');
+                        console.error('Failed to process PDF. Please try again. Error:', err);
                     }
                 } else {
                     fileInfo.style.display = 'none';
                     showError('Please select a valid PDF file');
+                }
+            });
+
+            function showModal(subjectName, teacherName, classCode) {
+                const modal = document.getElementById('subject-modal');
+                document.getElementById('subject').textContent = subjectName;
+                document.getElementById('teacher').innerHTML = teacherName;
+                document.getElementById('classCode').innerHTML = classCode;
+                
+                modal.style.display = 'flex';
+                setTimeout(() => {
+                    modal.classList.add('show');
+                }, 10);
+            }
+
+            const closeModalBtn = document.getElementById("close-btn");
+
+            
+            function closeModal() {
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
+            closeModalBtn.addEventListener("click", closeModal);
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
                 }
             });
 
@@ -107,9 +321,6 @@
                 }
             });
 
-            const colorList = ["#a1f7da", "#ffde59", "#ed615c", "#36ad93", "#00bf63", "#38b6ff", "#a1f7da", "#ff66c4", "#8c52ff", "#ff914d"];
-
-
         });
     </script>
     <title>Neat Schedule</title>
@@ -125,150 +336,172 @@
             
         <input type="file" id="pdf-file" accept=".pdf">
         <div class="file-info" id="file-info"></div>
+        <div class="download-buttons">
+            <button id="download-pdf" style="display: none;" class="download-btn">Descargar PDF</button>
+            <button id="download-image" style="display: none;" class="download-btn">Descargar Imagen</button>
+        </div>
+        <div id="tip">Haz click a una materia para saber más información de ella</div>
     </div>
     <section id="schedule-container">
         <div id="schedule">
             <div class="hour-column">
                 <span>Hora</span>
-                <span>6:00</span>
-                <span>7:00</span>
-                <span>8:00</span>
-                <span>9:00</span>
-                <span>10:00</span>
-                <span>11:00</span>
-                <span>12:00</span>
-                <span>13:00</span>
-                <span>14:00</span>
-                <span>15:00</span>
-                <span>16:00</span>
-                <span>17:00</span>
-                <span>18:00</span>
-                <span>19:00</span>
-                <span>20:00</span>
-                <span>21:00</span>
-                <span>22:00</span>
+                <div>6:00</div>
+                <div>7:00</div>
+                <div>8:00</div>
+                <div>9:00</div>
+                <div>10:00</div>
+                <div>11:00</div>
+                <div>12:00</div>
+                <div>13:00</div>
+                <div>14:00</div>
+                <div>15:00</div>
+                <div>16:00</div>
+                <div>17:00</div>
+                <div>18:00</div>
+                <div>19:00</div>
+                <div>20:00</div>
+                <div>21:00</div>
+                <div>22:00</div>
             </div>
             <div class="column">
                 <span>Lunes</span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
             </div>
             <div class="column">
                 <span>Martes</span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
             </div>
             <div class="column">
                 <span>Miércoles</span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
             </div>
             <div class="column">
                 <span>Jueves</span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
             </div>
             <div class="column">
                 <span>Viernes</span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
             </div>
             <div class="column">
                 <span>Sábado</span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
             </div>
         </div>
     </section>
+
+    <div class="modal" id="subject-modal" style="display: none;">
+    <div class="modal-content">
+        <button class="modal-close" id="close-btn">&times;</button>
+        <h3 id="subject">Subject Name</h3>
+        <div class="modal-info">
+            <div class="modal-item teacher">
+                <strong>Docente:</strong>
+                <span id="teacher"></span>
+            </div>
+            <div class="modal-item class-code">
+                <strong>Clave de asignatura:</strong>
+                <span id="classCode"></span>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
