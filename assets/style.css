@@ -350,6 +350,25 @@ footer {
     animation: modalSlideIn 0.3s ease;
 }
 
+@media (min-width: 769px) {
+    .orientation-message {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+}
+
 @media (max-width: 1024px) {
     #form-div {
         padding: 2% 15%;
@@ -539,5 +558,33 @@ footer {
     
     #schedule-container::-webkit-scrollbar-thumb:hover {
         background: #555;
+    }
+
+     .orientation-message {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    
+    .orientation-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 768px) and (orientation: portrait) {
+    .orientation-message {
+        display: flex;
     }
 }

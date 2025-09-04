@@ -343,11 +343,23 @@
                 }
             });
 
+            window.addEventListener('orientationchange', function() {
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                }, 100);
+            });
         });
     </script>
     <title>Neat Schedule</title>
 </head>
 <body>
+    <div class="orientation-message">
+        <div>
+            <div class="orientation-icon">📱 ↻</div>
+            <h2>Rota tu dispositivo</h2>
+            <p>Para una mejor experiencia, por favor rota tu dispositivo a modo horizontal (landscape).</p>
+        </div>
+    </div>
     <div id="form-div">
         <h1>Neat Schedule</h1>
         <div class="upload-area" onclick="document.getElementById('file-info').click()" id="uploadArea">
