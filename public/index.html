@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="assets/img/favicon.svg" sizes="any" type="image/svg+xml">
     <link rel="stylesheet" href="assets/style.css">
-    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
@@ -20,6 +19,23 @@
 
             function getRandomInt(max) {
                 return Math.floor(Math.random() * max);
+            }
+
+             function isMobile() {
+                console.log(window.innerWidth);
+                return window.innerWidth <= 768;
+            }
+
+            function forceHorizontalForDownload() {
+                if (isMobile() && screen.orientation) {
+                    try {
+                        screen.orientation.lock('landscape').catch(err => {
+                            console.log('Could not lock orientation:', err);
+                        });
+                    } catch (err) {
+                        console.log('Screen orientation not supported:', err);
+                    }
+                }
             }
 
             let jsPDFLoaded = false;
@@ -43,6 +59,7 @@
             }
 
             async function downloadScheduleAsPDF() {
+                forceHorizontalForDownload();
                 const scheduleElement = document.getElementById('schedule-container');
                 await loadJsPDF();
                 
@@ -77,6 +94,7 @@
             }
 
             function downloadScheduleAsImage() {
+                forceHorizontalForDownload();
                 const scheduleElement = document.getElementById('schedule-container');
                 
                 html2canvas(scheduleElement, {

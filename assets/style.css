@@ -405,7 +405,6 @@ footer {
     }
     
     #schedule {
-        grid-template-columns: 60px repeat(6, 1fr);
         font-size: 12px;
         overflow-x: auto;
         min-width: 600px; /* Prevent crushing on very small screens */
@@ -422,8 +421,8 @@ footer {
     
     .hour-column div, .column div {
         padding: 5px 2px;
-        min-height: 50px;
-        max-height: 50px;
+        min-height: 86px;
+        max-height: 72px;
     }
     
     .column div p {
@@ -461,7 +460,6 @@ footer {
     }
     
     #schedule {
-        grid-template-columns: 50px repeat(6, 1fr);
         font-size: 10px;
         min-width: 500px; /* Minimum width to prevent complete crushing */
     }
