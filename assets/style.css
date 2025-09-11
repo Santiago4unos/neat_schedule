@@ -13,6 +13,28 @@ h1 {
     text-align: center;
 }
 
+.header-btn {
+    background-color: rgb(37, 35, 35);
+    display: flex;
+    justify-content: end;
+}
+
+.btn-container {
+    display: flex;
+    flex-direction: column;
+    color: white;
+}
+
+.btn {
+    margin: 10px;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background-color: rgb(255, 69, 69);
+    text-decoration: none;
+    color: white;
+}
+
 .upload-area {
     border: 3px dashed #79D2E6;
     border-radius: 15px;
