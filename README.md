@@ -17,7 +17,7 @@ Ya que para ambos me salía algo similar a esto:
 ACH-2307B - CÁLCULO DIFERENCIAL - 07:00:00 08:00:00 09:00:00 10:00:00
 
 Por lo cual decidí usar [jsPDF](https://www.npmjs.com/package/jspdf), una herramienta en la que ya agrupaba cada texto en esta estructura:
-```javascript{
+```javascript
     "40": [
         {
             "text": "Texto de linea 1:",
@@ -43,7 +43,8 @@ Por lo cual decidí usar [jsPDF](https://www.npmjs.com/package/jspdf), una herra
             "height": 8
         },
     ]
-}```
+```
 
 Y ya con esto podía acomodarlo en columnas y así para finalmente poder convertirlo en html y mostrarlo en pantalla.
-Aunque hay **algo que diferencía** todavía al mío al momento en el que escribo esto (2025/09/14) que es que en LEO cuando intentas descargar el horario, todavía lo descarga como se veía antes el horario en SIIAU, mientras que mi proyecto si lo descargas todavía se ve visualmente atractivo.
+## Diferencia de este proyecto y LEO
+Aunque hay **algo que diferencía** todavía al mío al momento en el que escribo esto **(2025/09/14)** que es que en LEO cuando intentas descargar el horario, todavía lo descarga como se veía antes el horario en SIIAU, mientras que mi proyecto si lo descargas todavía se ve visualmente atractivo.
