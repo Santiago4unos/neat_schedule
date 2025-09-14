@@ -15,6 +15,8 @@
             const hoursRegex = /(?:\d{1,2})?(?:[01]\d|2[0-2]):[0-5]\d:[0-5]\d (?:[01]\d|2[0-2]):[0-5]\d:[0-5]\d/g;
             const classroomRegex = /[A-F]\d{1,2}/; 
             const colorList = ["#a1f7da", "#ffde59", "#ed615c", "#36ad93", "#00bf63", "#38b6ff", "#ff4757", "#ff66c4", "#8c52ff", "#ff914d", "#7bed9f"];
+            let subjectsData = {};
+            let scheduleDataList = {};
             const modal = document.getElementById("subject-modal");
 
             function getRandomInt(max) {
@@ -22,7 +24,6 @@
             }
 
              function isMobile() {
-                console.log(window.innerWidth);
                 return window.innerWidth <= 768;
             }
 
@@ -58,9 +59,150 @@
                 });
             }
 
+            function trimEmptyRows(scheduleElement) {
+                const columns = scheduleElement.querySelectorAll('.column, .hour-column');
+                const totalRows = columns[0].children.length - 1; // -1 for header
+                
+                let firstNonEmptyRow = 1;
+                for (let rowIndex = 1; rowIndex < totalRows; rowIndex++) {
+                    let hasContent = false;
+                    
+                    for (let colIndex = 1; colIndex < columns.length; colIndex++) {
+                        const cell = columns[colIndex].children[rowIndex];
+                        if (cell && cell.children.length > 0) {
+                            hasContent = true;
+                            break;
+                        }
+                    }
+                    
+                    if (hasContent) {
+                        firstNonEmptyRow = rowIndex;
+                        break;
+                    }
+                }
+                
+                let lastNonEmptyRow = totalRows - 1;
+                for (let rowIndex = totalRows - 1; rowIndex >= 1; rowIndex--) {
+                    let hasContent = false;
+                    
+                    for (let colIndex = 1; colIndex < columns.length; colIndex++) {
+                        const cell = columns[colIndex].children[rowIndex];
+                        if (cell && cell.children.length > 0) {
+                            hasContent = true;
+                            break;
+                        }
+                    }
+                    
+                    if (hasContent) {
+                        lastNonEmptyRow = rowIndex;
+                        break;
+                    }
+                }
+                
+                const scheduleGrid = scheduleElement.querySelector('#schedule');
+                const originalGridRows = window.getComputedStyle(scheduleGrid).gridTemplateRows;
+                
+                const neededRows = (lastNonEmptyRow - firstNonEmptyRow + 1) + 1; // +1 for header
+                
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isMobile) {
+                    scheduleGrid.style.gridTemplateRows = `auto repeat(${neededRows - 1}, minmax(60px, auto))`;
+                } else {
+                    scheduleGrid.style.gridTemplateRows = `repeat(${neededRows}, minmax(70px, 70px))`;
+                }
+                
+                const removedElements = [];
+                
+                for (let rowIndex = firstNonEmptyRow - 1; rowIndex >= 1; rowIndex--) {
+                    columns.forEach((column, colIndex) => {
+                        if (column.children[rowIndex]) {
+                            removedElements.push({
+                                element: column.children[rowIndex],
+                                parent: column,
+                                insertAfter: column.children[rowIndex - 1], // Insert after the previous element
+                                columnIndex: colIndex,
+                                rowIndex: rowIndex,
+                                position: 'beginning'
+                            });
+                            column.removeChild(column.children[rowIndex]);
+                        }
+                    });
+                }
+                
+                const currentTotalRows = columns[0].children.length - 1; // Recalculate after removing beginning rows
+                const adjustedLastRow = lastNonEmptyRow - (firstNonEmptyRow - 1); // Adjust for removed beginning rows
+                
+                for (let rowIndex = adjustedLastRow + 1; rowIndex <= currentTotalRows; rowIndex++) {
+                    columns.forEach((column, colIndex) => {
+                        const elementToRemove = column.children[adjustedLastRow + 1];
+                        if (elementToRemove) {
+                            removedElements.push({
+                                element: elementToRemove,
+                                parent: column,
+                                insertAfter: null, // Will be appended at the end
+                                columnIndex: colIndex,
+                                rowIndex: rowIndex + (firstNonEmptyRow - 1), // Store original row index
+                                position: 'end'
+                            });
+                            column.removeChild(elementToRemove);
+                        }
+                    });
+                }
+                
+                return { 
+                    firstNonEmptyRow, 
+                    lastNonEmptyRow, 
+                    originalGridRows,
+                    removedElements
+                };
+            }
+
+            function restoreAllRows(scheduleElement, trimData) {
+                const scheduleGrid = scheduleElement.querySelector('#schedule');
+                
+                scheduleGrid.style.gridTemplateRows = trimData.originalGridRows;
+                
+                const sortedElements = trimData.removedElements.sort((a, b) => {
+                    if (a.rowIndex !== b.rowIndex) return a.rowIndex - b.rowIndex;
+                    return a.columnIndex - b.columnIndex;
+                });
+                
+                const beginningElements = sortedElements.filter(item => item.position === 'beginning');
+                beginningElements.forEach(({ element, parent, insertAfter }) => {
+                    if (insertAfter && insertAfter.parentNode === parent) {
+                        parent.insertBefore(element, insertAfter.nextSibling);
+                    } else {
+                        parent.insertBefore(element, parent.children[1]); // Insert after header
+                    }
+                });
+                
+                const endElements = sortedElements.filter(item => item.position === 'end');
+                endElements.forEach(({ element, parent }) => {
+                    parent.appendChild(element);
+                });
+            }
+
             async function downloadScheduleAsPDF() {
                 forceHorizontalForDownload();
                 const scheduleElement = document.getElementById('schedule-container');
+                
+                const editButtons = scheduleElement.querySelectorAll('#edit-button');
+                editButtons.forEach(btn => btn.style.display = 'none');
+                
+                const trimData = trimEmptyRows(scheduleElement);
+                
+                const scheduleGrid = scheduleElement.querySelector('#schedule');
+                const isMobile = window.innerWidth <= 768;
+                let originalHeight = '';
+                
+                if (isMobile) {
+                    originalHeight = scheduleGrid.style.height;
+                    const activeRows = scheduleGrid.querySelectorAll('.column')[0].children.length;
+                    const rowHeight = isMobile ? 60 : 70;
+                    scheduleGrid.style.height = `${activeRows * rowHeight}px`;
+                }
+                
                 await loadJsPDF();
                 
                 html2canvas(scheduleElement, {
@@ -68,28 +210,46 @@
                     useCORS: true,
                     backgroundColor: '#ffffff'
                 }).then(canvas => {
+                    editButtons.forEach(btn => btn.style.display = 'block');
+                    restoreAllRows(scheduleElement, trimData);
+                    
+                    if (isMobile) {
+                        scheduleGrid.style.height = originalHeight;
+                    }
+                    
                     const imgData = canvas.toDataURL('image/png');
                     const { jsPDF } = window.jspdf;
                     const pdf = new jsPDF('l', 'mm', 'a4');
                     
                     const pageWidth = 297;
                     const pageHeight = 210;
-                    const margin = 10;
+                    const margin = 5; // Reduced margin for more space
                     const availableWidth = pageWidth - (margin * 2);
                     const availableHeight = pageHeight - (margin * 2);
                     
                     const imgWidth = canvas.width;
                     const imgHeight = canvas.height;
-                    const ratio = Math.min(availableWidth / (imgWidth * 0.264583), availableHeight / (imgHeight * 0.264583));
+                    const scaleX = availableWidth / (imgWidth * 0.264583); // Convert pixels to mm
+                    const scaleY = availableHeight / (imgHeight * 0.264583);
                     
-                    const scaledWidth = imgWidth * 0.264583 * ratio;
-                    const scaledHeight = imgHeight * 0.264583 * ratio;
+                    const scale = Math.min(scaleX, scaleY);
+                    
+                    const scaledWidth = imgWidth * 0.264583 * scale;
+                    const scaledHeight = imgHeight * 0.264583 * scale;
                     
                     const x = (pageWidth - scaledWidth) / 2;
                     const y = (pageHeight - scaledHeight) / 2;
                     
                     pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
                     pdf.save('horario.pdf');
+                }).catch(error => {
+                    // Make sure to restore everything even if there's an error
+                    editButtons.forEach(btn => btn.style.display = 'block');
+                    restoreAllRows(scheduleElement, trimData);
+                    if (isMobile) {
+                        scheduleGrid.style.height = originalHeight;
+                    }
+                    console.error('Error generating PDF:', error);
                 });
             }
 
@@ -97,15 +257,46 @@
                 forceHorizontalForDownload();
                 const scheduleElement = document.getElementById('schedule-container');
                 
+                const editButtons = scheduleElement.querySelectorAll('#edit-button');
+                editButtons.forEach(btn => btn.style.display = 'none');
+                
+                const trimData = trimEmptyRows(scheduleElement);
+                
+                const scheduleGrid = scheduleElement.querySelector('#schedule');
+                const isMobile = window.innerWidth <= 768;
+                let originalHeight = '';
+                
+                if (isMobile) {
+                    originalHeight = scheduleGrid.style.height;
+                    const activeRows = scheduleGrid.querySelectorAll('.column')[0].children.length;
+                    const rowHeight = isMobile ? 60 : 70;
+                    scheduleGrid.style.height = `${activeRows * rowHeight}px`;
+                }
+                
                 html2canvas(scheduleElement, {
                     scale: 2,
                     useCORS: true,
                     backgroundColor: '#ffffff'
                 }).then(canvas => {
+                    editButtons.forEach(btn => btn.style.display = 'block');
+                    restoreAllRows(scheduleElement, trimData);
+                    
+                    if (isMobile) {
+                        scheduleGrid.style.height = originalHeight;
+                    }
+                    
                     const link = document.createElement('a');
                     link.download = 'horario.png';
                     link.href = canvas.toDataURL();
                     link.click();
+                }).catch(error => {
+                    // Make sure to restore everything even if there's an error
+                    editButtons.forEach(btn => btn.style.display = 'block');
+                    restoreAllRows(scheduleElement, trimData);
+                    if (isMobile) {
+                        scheduleGrid.style.height = originalHeight;
+                    }
+                    console.error('Error generating image:', error);
                 });
             }
 
@@ -235,16 +426,48 @@
                         const subject = scheduledClass["subject"];
                         const hourDiv = document.createElement("div");
                         hourDiv.innerHTML = `
-                            <p>${scheduledClass["hours"]} ${scheduledClass["classroom"]}</p>
+                            <!-- <p>${scheduledClass["hours"]} ${scheduledClass["classroom"]}</p> -->
                             <p>${subject}</p>
+                            <img src="./assets/img/edit.svg" id="edit-button">
+                            <p>${scheduledClass["classroom"]}</p>
                         `;
-                        hourDiv.setAttribute("style", `background-color: ${subjectsData[subject]["color"]};`);
-                        hourDiv.setAttribute("class", "clickable");
+                        const editButton = hourDiv.querySelector('img');
+                        hourDiv.setAttribute("style", `background-color: ${subjectsData[subject]["color"]}; position: relative; cursor: pointer;`);
+                        hourDiv.addEventListener('mouseenter', function(e) {
+                            if (e.target === this) {
+                                this.style.filter = 'brightness(85%)';
+                            }
+                        });
+                        hourDiv.addEventListener('mouseleave', function() {
+                            this.style.filter = 'none';
+                        });
+
+                        editButton.addEventListener('mouseenter', function(e) {
+                            e.stopPropagation();
+                            hourDiv.style.filter = 'none';
+                        });
+
+                        editButton.addEventListener('mouseleave', function(e) {
+                            e.stopPropagation();
+                            hourDiv.style.filter = 'brightness(85%)';
+                        });
+
+                        // hourDiv.setAttribute("class", "clickable");
                         const startHour = Number(scheduledClass.hours.substring(0, 2));
                         const rowNum = startHour - 5;
                         dayColumns[dayNum].children[rowNum].appendChild(hourDiv);
                         const subjectInfo = subjectsData[subject];
-                        hourDiv.addEventListener("click", () => showModal(subject, subjectInfo["teacher"], subjectInfo["subjectCode"]));
+                        hourDiv.addEventListener("click", (e) => {
+                            if (e.target !== editButton) {
+                                showModal(subject, subjectInfo["teacher"], subjectInfo["subjectCode"]);
+                            }
+                        });
+                        
+                        editButton.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            const currentClassroom = hourDiv.children[2].textContent;
+                            showEditModal(subject, subjectInfo["teacher"], subjectInfo["subjectCode"], currentClassroom, subjectsData[subject], hourDiv);
+                        });
                     }
                 }
                 document.getElementById('download-pdf').style.display = 'block';
@@ -277,7 +500,7 @@
         
                         const data = await response.json();
 
-                        const [subjectsData, scheduleDataList] = extractDataFromSchedule(data);
+                        [subjectsData, scheduleDataList] = extractDataFromSchedule(data);
                         dataToVisualSchedule(subjectsData, scheduleDataList);
                     } catch (err) {
                         console.error('Failed to process PDF. Please try again. Error:', err);
@@ -300,22 +523,130 @@
                 }, 10);
             }
 
-            const closeModalBtn = document.getElementById("close-btn");
+            function editSubject(oldSubjectData, newSubjectData, affectAll, clickedHourDiv = null) {
+                const columns = document.getElementsByClassName('column');
+                
+                if (!affectAll && clickedHourDiv) {
+                    // Only update the specific cell that was clicked
+                    const subjectParagraph = clickedHourDiv.children[0];
+                    const classroomParagraph = clickedHourDiv.children[2];
+                    
+                    if (subjectParagraph) {
+                        clickedHourDiv.style.backgroundColor = newSubjectData["color"];
+                        subjectParagraph.textContent = newSubjectData["subject"];
+                    }
+                    
+                    if (classroomParagraph) {
+                        classroomParagraph.textContent = newSubjectData["classroom"];
+                    }
+                    
+                    return;
+                }
+                
+                // If affectAll is true, update all instances of this subject
+                for (const column of columns) {
+                    const hourDivs = column.querySelectorAll('div');
+                    
+                    for (const hourDiv of hourDivs) {
+                        // Jump over empty divs
+                        if (!hourDiv.children || hourDiv.children.length === 0) continue;
+                        
+                        const subjectParagraph = hourDiv.children[0];
+                        const classroomParagraph = hourDiv.children[2];
+                        
+                        if (subjectParagraph && subjectParagraph.textContent === oldSubjectData["subject"]) {
+                            hourDiv.style.backgroundColor = newSubjectData["color"];
+                            subjectParagraph.textContent = newSubjectData["subject"];
+                            
+                            if (classroomParagraph) {
+                                classroomParagraph.textContent = newSubjectData["classroom"];
+                            }
+                        }
+                    }
+                }
+            }
+
+            function showEditModal(subjectName, teacherName, classCode, classroom, subjectData, clickedHourDiv = null) {
+                const modal = document.getElementById('edit-modal');
+                document.getElementById('edit-subject').value = subjectName;
+                document.getElementById('edit-classroom').value = classroom;
+                document.getElementById('edit-teacher').value = teacherName;
+                document.getElementById('classCode-not-edit').textContent = classCode;
+                document.getElementById('edit-color').style.backgroundColor = subjectData["color"];
+                document.getElementById('edit-color').value = subjectData["color"];
+                
+                modal.style.display = 'flex';
+                setTimeout(() => {
+                    modal.classList.add('show');
+                }, 10);
+
+                const oldSaveBtn = document.getElementById('save-edit');
+                const newSaveBtn = oldSaveBtn.cloneNode(true);
+                oldSaveBtn.parentNode.replaceChild(newSaveBtn, oldSaveBtn);
+                
+                newSaveBtn.addEventListener('click', () => {
+                    const newSubject = document.getElementById('edit-subject').value;
+                    const newTeacher = document.getElementById('edit-teacher').value;
+                    const newColor = document.getElementById('edit-color').value;
+                    const newClassroom = document.getElementById('edit-classroom').value;
+                    const affectAll = document.getElementById('affect-all').checked;
+                    
+                    const oldSubjectData = {
+                        "subject": subjectName,
+                        "teacher": teacherName,
+                        "classroom": classroom,
+                        "subjectCode": classCode,
+                        "color": subjectData["color"]
+                    };
+                    
+                    const newSubjectData = {
+                        "subject": newSubject,
+                        "teacher": newTeacher,
+                        "classroom": newClassroom,
+                        "subjectCode": classCode,
+                        "color": newColor
+                    };
+                    
+                    editSubject(oldSubjectData, newSubjectData, affectAll, clickedHourDiv);
+                    
+                    if (affectAll && subjectsData[subjectName]) {
+                        subjectsData[subjectName].subject = newSubject;
+                        subjectsData[subjectName].teacher = newTeacher;
+                        subjectsData[subjectName].color = newColor;
+                    }
+                    
+                    modal.classList.remove('show');
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                    }, 300);
+                });
+            }
+
+            const closeModalBtns = document.getElementsByClassName("modal-close");
+            const modals = document.getElementsByClassName("modal");
 
             
-            function closeModal() {
+            function closeModal(e) {
+                const modal = e.target.closest('.modal');
                 modal.classList.remove('show');
                 setTimeout(() => {
                     modal.style.display = 'none';
                 }, 300);
             }
-            closeModalBtn.addEventListener("click", closeModal);
 
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeModal();
-                }
-            });
+            for (const btn of closeModalBtns) {
+                btn.addEventListener('click', function(e) {
+                    closeModal(e);
+                });
+            }
+
+            for (const modal of modals) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeModal(e);
+                    }
+                });
+            }
 
             const uploadArea = document.getElementById("uploadArea");
 
@@ -532,20 +863,52 @@
     </footer>
 
     <div class="modal" id="subject-modal" style="display: none;">
-    <div class="modal-content">
-        <button class="modal-close" id="close-btn">&times;</button>
-        <h3 id="subject">Subject Name</h3>
-        <div class="modal-info">
-            <div class="modal-item teacher">
-                <strong>Docente:</strong>
-                <span id="teacher"></span>
-            </div>
-            <div class="modal-item class-code">
-                <strong>Clave de asignatura:</strong>
-                <span id="classCode"></span>
+        <div class="modal-content">
+            <button class="modal-close" class="close-btn">&times;</button>
+            <h3 id="subject">Subject Name</h3>
+            <div class="modal-info">
+                <div class="modal-item teacher">
+                    <strong>Docente:</strong>
+                    <span id="teacher"></span>
+                </div>
+                <div class="modal-item class-code">
+                    <strong>Clave de asignatura:</strong>
+                    <span id="classCode"></span>
+                </div>
             </div>
         </div>
     </div>
-</div>
+    <div class="modal" id="edit-modal" style="display: none;">
+        <div class="modal-content">
+            <button class="modal-close" class="close-btn">&times;</button>
+            <div class="modal-info">
+                <div class="modal-item class-code">
+                    <strong>Clave de asignatura:</strong>
+                    <span id="classCode-not-edit"></span>
+                </div>
+                <div class="modal-item subject">
+                    <strong>Materia:</strong>
+                    <input id="edit-subject" type="text">
+                </div>
+                <div class="modal-item classroom">
+                    <strong>Aula:</strong>
+                    <input id="edit-classroom" type="text">
+                </div>
+                <div class="modal-item teacher">
+                    <strong>Docente:</strong>
+                    <input id="edit-teacher" type="text">
+                </div>
+                <div class="modal-item color">
+                    <strong>Color:</strong>
+                    <input type="color" id="edit-color">
+                </div>
+                <div class="modal-item">
+                    <strong>Aplicar a todas las horas de la materia:</strong>
+                    <input type="checkbox" id="affect-all">
+                </div>
+                <button id="save-edit">Guardar</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
