@@ -14,7 +14,10 @@ Y esto:
 |ACH-2307B - CÁLCULO DIFERENCIAL - JUAN PEREZ| |07:00:00 08:00:00 F39|         |        |09:00:00 10:00:00 E31|
 
 Ya que para ambos me salía algo similar a esto:
-ACH-2307B - CÁLCULO DIFERENCIAL - 07:00:00 08:00:00 09:00:00 10:00:00
+ACH-2307B - CÁLCULO DIFERENCIAL - 07:00:00 08:00:00 F39 09:00:00 10:00:00 E31
+
+> El texto del grupo cortado porque a veces el nombre del maestro
+> aparecía en la siguiente linea y no lo leía todo junto
 
 Por lo cual decidí usar [jsPDF](https://www.npmjs.com/package/jspdf), una herramienta en la que ya agrupaba cada texto en esta estructura:
 ```javascript
